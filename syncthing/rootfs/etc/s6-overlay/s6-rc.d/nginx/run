@@ -1,0 +1,13 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Community App: Syncthing
+# Runs the NGINX daemon
+# ==============================================================================
+
+# Wait for Syncthing to become available. A first run, or a database migration
+# after a major Syncthing upgrade, can take a long while.
+bashio::net.wait_for 28384 127.0.0.1 900
+
+bashio::log.info "Starting NGINX..."
+exec nginx

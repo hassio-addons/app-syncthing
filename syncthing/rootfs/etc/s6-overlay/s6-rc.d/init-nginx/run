@@ -1,0 +1,56 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Community App: Syncthing
+# Configures NGINX for use with Syncthing
+# ==============================================================================
+declare gui_user
+
+# Generate Ingress configuration
+bashio::var.json \
+    interface "$(bashio::app.ip_address)" \
+    port "^$(bashio::app.ingress_port)" \
+    | tempio \
+        -template /etc/nginx/templates/ingress.gtpl \
+        -out /etc/nginx/servers/ingress.conf
+
+# Generate direct access configuration, if enabled.
+if bashio::var.has_value "$(bashio::app.port 8384)"; then
+    bashio::config.require.ssl
+
+    # Ingress is protected by Home Assistant, direct access is not. Syncthing
+    # only guards against unauthenticated remote access by looking at the
+    # address it is being reached on, which is always loopback behind this
+    # proxy. So its own GUI credentials are the only thing standing between
+    # the network and full administrative access.
+    gui_user=""
+    if bashio::fs.file_exists "/data/config.xml"; then
+        gui_user=$(\
+            xmlstarlet sel -t -v "/configuration/gui/user" /data/config.xml \
+            2>/dev/null \
+        ) || true
+    fi
+
+    if bashio::var.is_empty "${gui_user}"; then
+        bashio::log.warning
+        bashio::log.warning "Direct access to the Syncthing web interface is"
+        bashio::log.warning "enabled, but Syncthing has no GUI username and"
+        bashio::log.warning "password set. Anybody who can reach this machine"
+        bashio::log.warning "on port $(bashio::app.port 8384) has full control"
+        bashio::log.warning "over your synchronized files!"
+        bashio::log.warning
+        bashio::log.warning "Open the web interface and set credentials under"
+        bashio::log.warning "Actions -> Settings -> GUI, or disable the port"
+        bashio::log.warning "again and use Ingress instead."
+        bashio::log.warning
+    fi
+
+    bashio::var.json \
+        certfile "$(bashio::config 'certfile')" \
+        keyfile "$(bashio::config 'keyfile')" \
+        port "^$(bashio::app.port 8384)" \
+        ssl "^$(bashio::config 'ssl')" \
+        | tempio \
+            -template /etc/nginx/templates/direct.gtpl \
+            -out /etc/nginx/servers/direct.conf
+fi

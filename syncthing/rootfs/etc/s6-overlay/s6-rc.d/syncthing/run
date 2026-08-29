@@ -1,0 +1,27 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Community App: Syncthing
+# Runs the Syncthing daemon
+# ==============================================================================
+declare log_level
+
+# Syncthing has its own, smaller, set of log levels.
+log_level="INFO"
+case "$(bashio::string.lower "$(bashio::config 'log_level' 'info')")" in
+    trace|debug)    log_level="DEBUG" ;;
+    info|notice)    log_level="INFO" ;;
+    warning)        log_level="WARN" ;;
+    error|fatal)    log_level="ERROR" ;;
+esac
+
+bashio::log.info "Starting Syncthing..."
+
+# Upgrades are shipped as app updates, Syncthing should not replace its own
+# binary inside the container.
+exec /usr/bin/syncthing serve \
+    --home=/data \
+    --gui-address="127.0.0.1:28384" \
+    --log-level="${log_level}" \
+    --no-browser \
+    --no-upgrade

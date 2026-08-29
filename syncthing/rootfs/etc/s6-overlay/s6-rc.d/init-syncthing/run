@@ -1,0 +1,28 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Community App: Syncthing
+# Creates Syncthing's configuration on first run
+# ==============================================================================
+
+# Syncthing owns its configuration once it exists; only ever seed a fresh one,
+# so the defaults below stay the user's to change.
+if bashio::fs.file_exists "/data/config.xml"; then
+    bashio::log.debug "Syncthing is already configured, leaving its config alone"
+    exit 0
+fi
+
+bashio::log.info "Creating the initial Syncthing configuration..."
+syncthing generate --home=/data
+
+# Seed the path that the "Add Folder" dialog starts from. Syncthing leaves this
+# empty, and resolves whatever is typed into it against the working directory of
+# the process, which is "/". A folder added as "Documents" would therefore end
+# up in /Documents: inside the container filesystem, and thrown away on the next
+# app update. Point it at /share, so a folder added without a full path still
+# lands somewhere that survives.
+xmlstarlet ed -L \
+    -u "/configuration/defaults/folder/@path" -v "/share/" \
+    /data/config.xml
+
+bashio::log.info "New folders will default to /share"
