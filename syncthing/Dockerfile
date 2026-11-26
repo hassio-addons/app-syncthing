@@ -10,7 +10,7 @@ ARG BUILD_ARCH=amd64
 ARG SYNCTHING_VERSION="v2.1.7"
 RUN \
     apk add --no-cache \
-        nginx=1.30.7-r0 \
+        nginx=1.30.8-r0 \
         xmlstarlet=1.6.1-r2 \
     \
     && if [[ "${BUILD_ARCH}" = "aarch64" ]]; then ARCH="arm64"; fi \
